@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RiseIntern · Student Dashboard</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.22/mammoth.browser.min.js"></script>
+
+<style>
+  :root{
+    --bg-1:#0e1525;
+    --bg-2:#0b1020;
+    --card:rgba(255,255,255,0.06);
+    --stroke:rgba(255,255,255,0.1);
+    --text:#e8f0ff;
+    --muted:#9db0cf;
+    --accent:#00d4ff;
+    --accent-2:#7c4dff;
+    --good:#22c55e;
+    --warn:#f59e0b;
+    --bad:#ef4444;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; color:var(--text);
+    background: radial-gradient(1200px 600px at 15% -10%, #1b2559 0%, transparent 55%),
+                radial-gradient(1000px 500px at 110% 10%, #1b1f4a 0%, transparent 60%),
+                linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    font-family:"Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    overflow-x:hidden;
+  }
+
+
+  .dots::before, .dots::after{
+    content:"";
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+      radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 22px 22px, 38px 38px;
+    background-position: 0 0, 10px 8px;
+    mask-image: radial-gradient(ellipse at 70% 10%, rgba(0,0,0,.9), transparent 70%);
+  }
+  .dots::after{ filter: blur(0.3px); opacity:.6 }
+
+  
+  .app{
+    display:grid;
+    grid-template-columns: 260px 1fr;
+    min-height:100vh;
+    position:relative;
+    z-index:1;
+  }
+  aside{
+    position:sticky; top:0; height:100vh;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    border-right:1px solid var(--stroke);
+    padding:22px 18px;
+    display:flex; flex-direction:column; gap:16px;
+    backdrop-filter: blur(10px);
+  }
+  .brand{
+    display:flex; align-items:center; gap:10px; padding-bottom:12px;
+    border-bottom:1px dashed var(--stroke);
+  }
+  .brand-logo{
+    width:34px; height:34px; border-radius:10px;
+    background:linear-gradient(135deg, var(--accent), var(--accent-2));
+    display:grid; place-items:center; color:#00131a; font-weight:800;
+  }
+  .brand h1{ font: 700 18px/1 "Outfit", sans-serif; margin:0 }
+  .mini-card{
+    background:var(--card); border:1px solid var(--stroke);
+    border-radius:14px; padding:14px;
+  }
+  .mini-card .nm{ font-weight:600 }
+  .nav a{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
+    color:var(--text); text-decoration:none; font-weight:600; letter-spacing:.2px;
+    transition: transform .2s, background .2s;
+  }
+  .nav a:hover{ background:rgba(255,255,255,0.07); transform:translateX(4px) }
+  .nav small{ color:var(--muted); font-weight:400 }
+
+  main{ padding:28px; }
+  header.hero{
+    display:flex; align-items:center; justify-content:space-between; gap:20px;
+    padding:16px 18px; border:1px solid var(--stroke); border-radius:16px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+    box-shadow:0 10px 30px rgba(0,0,0,0.35);
+  }
+  .hero h2{
+    margin:0; font:700 28px/1.2 "Outfit", sans-serif;
+    background: linear-gradient(90deg, #ffffff, #bfeaff, #a58bff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .hero p{ color:var(--muted); margin-top:6px }
+
+  .search{
+    display:flex; gap:10px; align-items:center;
+    background:var(--card); border:1px solid var(--stroke); border-radius:12px; padding:8px 10px;
+  }
+  .search input{
+    background:transparent; border:0; outline:0; color:var(--text); width:220px;
+  }
+  .btn{
+    padding:10px 14px; border:0; border-radius:10px; cursor:pointer; font-weight:700;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2)); color:#00131a;
+    box-shadow: 0 10px 20px rgba(0,212,255,0.2);
+    transition: transform .15s ease;
+  }
+  .btn:hover{ transform: translateY(-2px) }
+
+ 
+  .grid{
+    display:grid; gap:18px; margin-top:22px;
+    grid-template-columns: 1.3fr 1fr;
+  }
+  .card{
+    background:var(--card); border:1px solid var(--stroke);
+    border-radius:16px; padding:18px;
+    animation: rise .6s ease both;
+  }
+  .card h3{ margin:0 0 10px 0; font:600 18px/1.2 "Outfit" }
+  .meta{ color:var(--muted); font-size:14px; margin-bottom:10px }
+
+  @keyframes rise{ from{ opacity:0; transform:translateY(8px) } to{opacity:1; transform:none} }
+
+  .stats{ display:grid; gap:14px; grid-template-columns: repeat(4,1fr) }
+  .stat{
+    background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    border:1px solid var(--stroke); border-radius:14px; padding:14px; text-align:center;
+  }
+  .stat .num{ font:700 22px "Outfit"; }
+  .stat .lbl{ color:var(--muted); font-size:12px; margin-top:4px }
+
+ 
+  .list{ display:grid; gap:12px }
+  .job{
+    display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center;
+    padding:12px; border:1px dashed var(--stroke); border-radius:12px;
+    background:rgba(255,255,255,0.04);
+  }
+  .job h4{ margin:0; font:600 16px/1.2 "Outfit" }
+  .job p{ margin:4px 0 0; color:var(--muted); font-size:13px }
+  .row{ display:flex; gap:8px; flex-wrap:wrap }
+  .btn-subtle{
+    padding:8px 10px; border-radius:10px; border:1px solid var(--stroke);
+    background:rgba(255,255,255,0.04); color:var(--text); cursor:pointer; font-weight:600;
+  }
+  .btn-good{ background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.3); color:#a6f3c1 }
+  .btn-warn{ background:rgba(245,158,11,.12); border-color:rgba(245,158,11,.3); color:#ffe3b0 }
+
+  
+  .timeline{ position:relative; padding-left:18px }
+  .timeline::before{
+    content:""; position:absolute; left:6px; top:6px; bottom:6px; width:2px; background:var(--stroke);
+  }
+  .tl-item{ position:relative; padding:8px 0 8px 18px }
+  .tl-item::before{
+    content:""; position:absolute; left:-2px; top:12px; width:10px; height:10px; border-radius:50%;
+    background:linear-gradient(90deg, var(--accent), var(--accent-2)); box-shadow:0 0 8px rgba(0,212,255,.6);
+  }
+
+
+  .badges{ display:flex; gap:10px; flex-wrap:wrap }
+  .badge{
+    padding:8px 12px; border-radius:999px; border:1px solid var(--stroke);
+    background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+    font-weight:700; font-size:12px;
+  }
+
+
+  .resources{ display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); }
+  .resource{ padding:14px; border-radius:12px; border:1px solid var(--stroke); background:rgba(255,255,255,.04) }
+  .resource a{ color:var(--accent); text-decoration:none }
+
+ 
+  footer{
+    margin-top:28px; position:relative; overflow:hidden;
+    border-top:1px solid var(--stroke);
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  }
+  .waves{
+    position:absolute; left:0; right:0; top:-1px; height:70px; pointer-events:none; opacity:.6;
+    background:
+     radial-gradient(60px 20px at 10% 0, rgba(124,77,255,.25) 0 60%, transparent 61%),
+     radial-gradient(60px 20px at 30% 0, rgba(0,212,255,.25) 0 60%, transparent 61%),
+     radial-gradient(60px 20px at 50% 0, rgba(124,77,255,.25) 0 60%, transparent 61%),
+     radial-gradient(60px 20px at 70% 0, rgba(0,212,255,.25) 0 60%, transparent 61%),
+     radial-gradient(60px 20px at 90% 0, rgba(124,77,255,.25) 0 60%, transparent 61%);
+    animation: bob 8s ease-in-out infinite;
+  }
+  @keyframes bob{ 0%,100%{ transform:translateY(-8px) } 50%{ transform:translateY(6px) } }
+
+
+  @media (max-width: 980px){
+    .app{ grid-template-columns: 1fr }
+    aside{ position:static; height:auto; border-right:0; border-bottom:1px solid var(--stroke) }
+    .grid{ grid-template-columns: 1fr }
+  }
+</style>
+</head>
+<body class="dots">
+
+<div class="app">
+  <aside>
+    <div class="brand">
+      <div class="brand-logo">R</div>
+      <h1>RiseIntern</h1>
+    </div>
+
+    <div class="mini-card">
+      <div class="nm" id="nmMini">Student</div>
+      <div class="meta" id="emMini">email@example.com</div>
+      <div class="badges" id="miniBadges">
+        <span class="badge">Newbie</span>
+      </div>
+    </div>
+
+    <div class="nav">
+      <a href="#home" onclick="goto('home')">🏠 <span>Dashboard</span></a>
+      <a href="#internships" onclick="goto('internships')">🧭 <span>Internships</span></a>
+      <a href="#applications" onclick="goto('applications')">🗂️ <span>Applications</span></a>
+      <a href="#resume" onclick="goto('resume')">📄 <span>Resume</span></a>
+      <a href="#parse" onclick="goto('parse')">🧬 <span>Resume Parsing</span></a>
+
+      <a href="#resources" onclick="goto('resources')">📚 <span>Resources</span></a>
+      <a href="#events" onclick="goto('events')">📅 <span>Events</span></a>
+      <a href="#notifications" onclick="goto('notifications')">🔔 <span>Notifications</span></a>
+      <a href="javascript:void(0)" onclick="logout()">🚪 <span>Logout</span></a>
+      <small>v1.0 Student</small>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main>
+    <header class="hero">
+      <div>
+        <h2 id="heroTitle">Welcome back 👋</h2>
+        <p>Track your progress, apply faster, and grow your skills with curated opportunities.</p>
+      </div>
+      <div class="search">
+        <input id="search" placeholder="Search internships..." onkeyup="filterJobs()" />
+        <button class="btn" onclick="goto('internships')">Search</button>
+      </div>
+    </header>
+
+    <!-- Overview + Stats -->
+    <section id="home" class="grid">
+      <div class="card">
+        <h3>Overview</h3>
+        <div class="meta">A quick snapshot of your job search.</div>
+        <div class="stats">
+          <div class="stat"><div class="num" id="statApps">0</div><div class="lbl">Applications</div></div>
+          <div class="stat"><div class="num" id="statSaved">0</div><div class="lbl">Saved</div></div>
+          <div class="stat"><div class="num" id="statReco">0</div><div class="lbl">Recommended</div></div>
+          <div class="stat"><div class="num" id="statResume">0%</div><div class="lbl">Resume Score</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Achievements</h3>
+        <div class="meta">Unlock badges as you engage.</div>
+        <div class="badges" id="badgesBox">
+          <span class="badge">Profile Created</span>
+        </div>
+      </div>
+    </section>
+
+    
+    <!-- Internships -->
+    <section id="internships" class="grid" style="grid-template-columns: 2fr 1fr;">
+      <div class="card">
+        <h3>Available Internships</h3>
+        <div class="list" id="internshipList"></div>
+        <div id="paginationContainer" style="margin-top:16px;"></div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:18px;">
+        <div class="card">
+          <h3>Learning Path</h3>
+          <div class="meta" style="margin-bottom:12px;">Upskill with AI guidance</div>
+          <button class="btn" style="width:100%; margin-bottom:8px;" onclick="startLearningAI()">📚 Start Learning</button>
+          <button class="btn-subtle" style="width:100%; padding:12px; text-align:left;" onclick="openLearningSyllabus()">
+            <strong>View Curriculum</strong>
+            <div style="font-size:12px; margin-top:4px; color:var(--muted);">AI-powered learning plan</div>
+          </button>
+        </div>
+
+        <div class="card">
+          <h3>Interview Prep</h3>
+          <div class="meta" style="margin-bottom:12px;">Practice with AI mock interviews</div>
+          <button class="btn" style="width:100%; margin-bottom:8px;" onclick="startInterviewAI()">🎤 Start Interview</button>
+          <button class="btn-subtle" style="width:100%; padding:12px; text-align:left;" onclick="openInterviewTopics()">
+            <strong>Interview Topics</strong>
+            <div style="font-size:12px; margin-top:4px; color:var(--muted);">Tech & HR rounds</div>
+          </button>
+        </div>
+
+        <div class="card">
+          <h3>Recommended For You</h3>
+          <div class="meta" id="recoMeta">Based on your interest.</div>
+          <div class="list" id="recoList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Applications -->
+    <section id="applications" class="grid">
+      <div class="card">
+        <h3>My Applications</h3>
+        <div class="list" id="appliedList"></div>
+      </div>
+
+      <div class="card">
+        <h3>Announcements</h3>
+        <div id="notifList"></div>
+      </div>
+    </section>
+
+    <!-- Resume Parsing -->
+<section id="parse" class="grid">
+  <div class="card">
+    <h3>Resume Parsing</h3>
+    <div class="meta">Upload a resume and let the system analyze it using AI.</div>
+
+    <input type="file" id="parseUpload" accept=".pdf,.docx" onchange="handleParseUpload()" />
+    <p id="parseStatus" style="margin-top:8px;">No file uploaded.</p>
+
+    <div style="margin-top:12px">
+      <button class="btn" onclick="generateParseAI()">Parse Resume</button>
+    </div>
+
+    <hr style="margin:18px 0; border:0; border-top:1px solid var(--stroke)" />
+
+    <h4 style="margin:0 0 6px">Extracted Text</h4>
+    <div id="parsedText" class="resource" style="max-height:200px; overflow:auto; white-space:pre-wrap;"></div>
+
+    <h4 style="margin-top:18px; margin-bottom:6px">AI Skills</h4>
+    <div id="parsedSkills" class="badges"></div>
+
+    <h4 style="margin-top:18px; margin-bottom:6px">AI Feedback</h4>
+    <div id="parsedFeedback" class="resource"></div>
+
+    <h4 style="margin-top:18px; margin-bottom:6px">Top Matches</h4>
+    <div id="parseMatches" class="list"></div>
+  </div>
+
+  <div class="card">
+    <h3>ATS Score</h3>
+    <div class="meta">Estimated compatibility</div>
+    <div id="parseScore" style="font-size:42px; font-weight:800; margin-top:10px;">0%</div>
+  </div>
+</section>
+
+    <!-- Resume & Resources -->
+    <section id="resume" class="grid">
+      <div class="card">
+        <h3>Resume</h3>
+        <div class="meta">Your stored resume is ready for parsing and matching.</div>
+        <div id="resumeStoredBox" class="resource" style="min-height:100px; display:flex; flex-direction:column; justify-content:center; gap:8px; padding:16px;">
+          <strong id="resumeStoredName">No resume stored yet.</strong>
+          <small id="resumeStoredHint" class="meta">Upload once and see your resume here.</small>
+          <button class="btn" style="width:max-content;" onclick="triggerResumeUpload()">Upload / Replace Resume</button>
+        </div>
+        <input type="file" id="resumeUpload" accept=".pdf,.docx" onchange="uploadResume()" style="display:none;" />
+      </div>
+
+      <div class="card">
+        <h3>Learning Resources</h3>
+        <div class="resources" id="resList"></div>
+      </div>
+    </section>
+
+    <!-- Events / Timeline -->
+    <section id="events" class="grid">
+      <div class="card">
+        <h3>Upcoming Events</h3>
+        <div class="timeline" id="eventList"></div>
+      </div>
+
+      <div class="card">
+        <h3>Your Timeline</h3>
+        <div class="timeline" id="timelineList"></div>
+      </div>
+    </section>
+
+    <!-- Notifications standalone -->
+    <section id="notifications" class="grid">
+      <div class="card">
+        <h3>Notifications</h3>
+        <div id="notifList2"></div>
+      </div>
+      <div class="card">
+        <h3>Saved Internships</h3>
+        <div class="list" id="savedList"></div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="waves"></div>
+      <div style="padding:18px; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <span>© <span id="yr"></span> RiseIntern · Crafted for students</span>
+        <span>Need help? <a href="#" style="color:var(--accent)">Contact support</a></span>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script>
+  /* ---------- Data ---------- */
+  let internships = [];
+  let allInternships = [];
+  const itemsPerPage = 6;
+  let currentPage = 1;
+  let totalPages = 1;
+  
+  // Load internships from JSON
+  async function loadInternships() {
+    try {
+      const response = await fetch('intern.json');
+      const data = await response.json();
+      
+      // Transform JSON data to match expected format
+      allInternships = data.map((item, index) => {
+        const sourceText = [item.title, item.company, item.tagline, item.platform].filter(Boolean).join(' ').toLowerCase();
+        const derivedTags = [
+          'java', 'python', 'javascript', 'html', 'css', 'sql', 'react', 'node', 'ai', 'ml', 'machine learning',
+          'data science', 'digital marketing', 'marketing', 'research', 'design', 'management', 'analytics', 'tableau',
+          'excel', 'web development', 'backend', 'frontend', 'python development', 'artificial intelligence'
+        ].filter(tag => sourceText.includes(tag));
+
+        const cleanTags = item.skills && item.skills.length > 0
+          ? item.skills
+          : derivedTags.length > 0
+            ? Array.from(new Set(derivedTags.map(t => t.replace(/\b([a-z])/g, s => s.toUpperCase()))))
+            : ["Opportunity"];
+
+        return {
+          id: index + 1,
+          title: item.title || "Untitled Opportunity",
+          company: item.company || "Company Not Specified",
+          location: item.location || "Not Specified",
+          stipend: item.stipend || "Not Disclosed",
+          tags: cleanTags,
+          platform: item.platform || "Internshala",
+          apply_link: item.apply_link || "#",
+          promo: item.promo || null
+        };
+      });
+      
+      internships = allInternships;
+      totalPages = Math.ceil(internships.length / itemsPerPage);
+      renderInternshipPage(1);
+      updateStats();
+    } catch (error) {
+      console.error("Failed to load internships:", error);
+      internships = [];
+    }
+  }
+
+  const resources = [
+    { t:"Modern JavaScript", link:"https://javascript.info/", note:"Deep, practical JS guide" },
+    { t:"SQLBolt", link:"https://sqlbolt.com/", note:"Interactive SQL lessons" },
+    { t:"Roadmap.sh", link:"https://roadmap.sh/", note:"Career roadmaps" },
+    { t:"InterviewBit", link:"https://www.interviewbit.com/", note:"Interview prep" }
+  ];
+
+  const events = [
+    { when:"This Week", what:"Campus Career Fair — register now" },
+    { when:"Oct 12", what:"Resume Clinic: 1:1 with mentors" },
+    { when:"Oct 20", what:"Hackathon: Build for Good" }
+  ];
+
+  const notices = [
+    "🚀 Google Summer of Code guide updated.",
+    "⚡ Your DataWorks application was viewed.",
+    "📢 New AI/ML internships added for Hyderabad."
+  ];
+
+  /* ---------- Elements ---------- */
+  const el = id => document.getElementById(id);
+  const internshipList = el('internshipList');
+  const appliedList = el('appliedList');
+  const savedList = el('savedList');
+  const recoList = el('recoList');
+  const notifList = el('notifList');
+  const notifList2 = el('notifList2');
+  const resList = el('resList');
+  const eventList = el('eventList');
+  const timelineList = el('timelineList');
+
+  /* ---------- Rendering ---------- */
+  function renderInternships(items = internships){
+    internshipList.innerHTML = "";
+    items.forEach(job=>{
+      const d = document.createElement('div');
+      d.className = "job";
+      d.innerHTML = `
+        <div>
+          <h4>${job.title}</h4>
+          <p>${job.company} — ${job.location}</p>
+          ${job.stipend ? `<p style="color:var(--accent); font-size:13px; margin:4px 0 0;">${job.stipend}</p>` : ''}
+          ${job.matchScore != null ? `<p style="color:var(--good); font-size:13px; margin:6px 0 0;">Match: ${job.matchScore}%</p>` : ''}
+          <div class="row" style="margin-top:6px">${job.tags.map(t=>`<span class="badge">${t}</span>`).join('')}</div>
+        </div>
+        <div class="row">
+          <button class="btn-subtle btn-good" onclick="apply(${job.id})">Apply</button>
+          <button class="btn-subtle btn-warn" onclick="saveJob(${job.id})">Save</button>
+          ${job.apply_link && job.apply_link !== "#" ? `<a href="${job.apply_link}" target="_blank" class="btn-subtle" style="text-decoration:none; display:flex; align-items:center;">→ View</a>` : ''}
+        </div>
+      `;
+      internshipList.appendChild(d);
+    });
+    
+    // Add pagination controls
+    addPaginationControls();
+  }
+
+  function renderInternshipPage(pageNum) {
+    currentPage = pageNum;
+    const start = (pageNum - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageItems = internships.slice(start, end);
+    renderInternships(pageItems);
+    addPaginationControls();
+  }
+
+  function addPaginationControls() {
+    const paginationDiv = document.getElementById('paginationContainer');
+    paginationDiv.innerHTML = '';
+    paginationDiv.style.cssText = 'display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap; padding:12px 0; border-top:1px solid var(--stroke); margin-top:12px;';
+    
+    // Previous button
+    if (currentPage > 1) {
+      const prevBtn = document.createElement('button');
+      prevBtn.textContent = '←';
+      prevBtn.className = 'btn-subtle';
+      prevBtn.style.cssText = 'min-width:36px; padding:8px;';
+      prevBtn.onclick = () => renderInternshipPage(currentPage - 1);
+      paginationDiv.appendChild(prevBtn);
+    }
+    
+    // Page numbers
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+      const firstBtn = document.createElement('button');
+      firstBtn.textContent = '1';
+      firstBtn.className = 'btn-subtle';
+      firstBtn.style.cssText = 'min-width:36px; padding:8px;';
+      firstBtn.onclick = () => renderInternshipPage(1);
+      paginationDiv.appendChild(firstBtn);
+      
+      if (startPage > 2) {
+        const dots = document.createElement('span');
+        dots.textContent = '...';
+        dots.style.cssText = 'color:var(--muted); padding:0 4px;';
+        paginationDiv.appendChild(dots);
+      }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      const pageBtn = document.createElement('button');
+      pageBtn.textContent = i;
+      pageBtn.className = i === currentPage ? 'btn-subtle btn-good' : 'btn-subtle';
+      pageBtn.style.cssText = 'min-width:36px; padding:8px;';
+      pageBtn.onclick = () => renderInternshipPage(i);
+      paginationDiv.appendChild(pageBtn);
+    }
+    
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        const dots = document.createElement('span');
+        dots.textContent = '...';
+        dots.style.cssText = 'color:var(--muted); padding:0 4px;';
+        paginationDiv.appendChild(dots);
+      }
+      
+      const lastBtn = document.createElement('button');
+      lastBtn.textContent = totalPages;
+      lastBtn.className = 'btn-subtle';
+      lastBtn.style.cssText = 'min-width:36px; padding:8px;';
+      lastBtn.onclick = () => renderInternshipPage(totalPages);
+      paginationDiv.appendChild(lastBtn);
+    }
+    
+    // Next button
+    if (currentPage < totalPages) {
+      const nextBtn = document.createElement('button');
+      nextBtn.textContent = '→';
+      nextBtn.className = 'btn-subtle';
+      nextBtn.style.cssText = 'min-width:36px; padding:8px;';
+      nextBtn.onclick = () => renderInternshipPage(currentPage + 1);
+      paginationDiv.appendChild(nextBtn);
+    }
+    
+    // Page info
+    const pageInfo = document.createElement('span');
+    pageInfo.className = 'meta';
+    pageInfo.textContent = `${currentPage}/${totalPages}`;
+    pageInfo.style.cssText = 'margin-left:8px; font-size:12px;';
+    paginationDiv.appendChild(pageInfo);
+  }
+
+  function renderApplied(){
+    appliedList.innerHTML="";
+    const applied = JSON.parse(localStorage.getItem('applied')||"[]");
+    if(!applied.length){ appliedList.innerHTML = `<p class="meta">No applications yet.</p>`; return; }
+    applied.forEach(job=>{
+      const d = document.createElement('div');
+      d.className="job";
+      const status = job.status || 'Pending';
+      d.innerHTML = `<div><h4>${job.title}</h4><p>${job.company} — ${job.location}</p><p class="meta">Status: <strong id="status-${job.id}">${status}</strong></p></div>
+                     <div class="row">
+                       <button class="btn-subtle" onclick="removeApplication(${job.id})">Remove</button>
+                       <button class="btn-subtle btn-good" onclick="acceptApplication(${job.id})">Accept</button>
+                       <button class="btn-subtle btn-warn" onclick="rejectApplication(${job.id})">Reject</button>
+                     </div>`;
+      appliedList.appendChild(d);
+    });
+  }
+
+  // Student actions: accept or reject an application (updates localStorage and backend if available)
+  function acceptApplication(id){
+    let applied = JSON.parse(localStorage.getItem('applied')||"[]");
+    const idx = applied.findIndex(j=>j.id===id);
+    if(idx===-1) return alert('Application not found');
+    applied[idx].status = 'Accepted';
+    localStorage.setItem('applied', JSON.stringify(applied));
+    // attempt backend update if Firestore available
+    try{
+      if(window.db){
+        // attempt to find application doc for this user+internship
+        const email = localStorage.getItem('rise_user');
+        db.collection('applications').where('applicantEmail','==',email).where('internshipId','==',applied[idx].id).get().then(snap=>{
+          snap.forEach(doc=> doc.ref.update({ status: 'Accepted' }));
+        }).catch(()=>{});
+      }
+    }catch(e){/* ignore */}
+    document.getElementById(`status-${id}`).textContent = 'Accepted';
+    updateStats();
+    alert('You marked this application as Accepted.');
+  }
+
+  function rejectApplication(id){
+    let applied = JSON.parse(localStorage.getItem('applied')||"[]");
+    const idx = applied.findIndex(j=>j.id===id);
+    if(idx===-1) return alert('Application not found');
+    applied[idx].status = 'Rejected';
+    localStorage.setItem('applied', JSON.stringify(applied));
+    try{
+      if(window.db){
+        const email = localStorage.getItem('rise_user');
+        db.collection('applications').where('applicantEmail','==',email).where('internshipId','==',applied[idx].id).get().then(snap=>{
+          snap.forEach(doc=> doc.ref.update({ status: 'Rejected' }));
+        }).catch(()=>{});
+      }
+    }catch(e){/* ignore */}
+    document.getElementById(`status-${id}`).textContent = 'Rejected';
+    updateStats();
+    alert('You marked this application as Rejected.');
+  }
+
+  function renderSaved(){
+    savedList.innerHTML="";
+    const saved = JSON.parse(localStorage.getItem('saved')||"[]");
+    if(!saved.length){ savedList.innerHTML = `<p class="meta">No saved internships.</p>`; return; }
+    saved.forEach(job=>{
+      const d = document.createElement('div');
+      d.className="job";
+      d.innerHTML = `<div><h4>${job.title}</h4><p>${job.company} — ${job.location}</p></div>
+                     <div class="row"><button class="btn-subtle btn-good" onclick="apply(${job.id})">Apply</button>
+                     <button class="btn-subtle" onclick="unsaveJob(${job.id})">Unsave</button></div>`;
+      savedList.appendChild(d);
+    });
+  }
+
+  function renderReco(){
+    const users = JSON.parse(localStorage.getItem("rise_users")||"{}");
+    const email = localStorage.getItem("rise_user");
+    const user = users[email] || {};
+    let filtered;
+
+    if (window.resumeProfile && window.resumeProfile.skills.length) {
+      filtered = allInternships
+        .map(job => ({ ...job, matchScore: computeJobMatchScore(job, window.resumeProfile) }))
+        .sort((a,b) => b.matchScore - a.matchScore)
+        .slice(0, 3);
+      el('recoMeta').textContent = `Based on your resume skills: ${window.resumeProfile.skills.slice(0,3).join(', ')}`;
+    } else {
+      const interest = (user.interest||"").toLowerCase();
+      filtered = allInternships.filter(j =>
+        j.title.toLowerCase().includes(interest) || j.tags.join(" ").toLowerCase().includes(interest)
+      ).slice(0, 3);
+      if(!filtered.length) filtered = allInternships.slice(0,3);
+      el('recoMeta').textContent = `Based on your interest: ${user.interest||"All"}`;
+    }
+
+    recoList.innerHTML="";
+    filtered.forEach(job=>{
+      const d = document.createElement('div');
+      d.className="job";
+      d.innerHTML = `<div><h4>${job.title}</h4><p>${job.company} — ${job.location}</p>${job.matchScore != null ? `<p style="color:var(--good); font-size:13px; margin:6px 0 0;">Match: ${job.matchScore}%</p>` : ''}</div>
+                     <div class="row"><button class="btn-subtle btn-good" onclick="apply(${job.id})">Apply</button></div>`;
+      recoList.appendChild(d);
+    });
+    el('statReco').textContent = filtered.length;
+  }
+
+  function renderResources(){
+    resList.innerHTML = resources.map(r=>`
+      <div class="resource">
+        <strong>${r.t}</strong><br>
+        <span class="meta">${r.note}</span><br>
+        <a href="${r.link}" target="_blank" rel="noopener">Open</a>
+      </div>
+    `).join('');
+  }
+
+  function renderEvents(){
+    eventList.innerHTML = events.map(e=>`
+      <div class="tl-item"><div class="meta">${e.when}</div><div>${e.what}</div></div>
+    `).join('');
+  }
+
+  function renderNotices(){
+    notifList.innerHTML = "";
+    notifList2.innerHTML = "";
+    notices.forEach(n=>{
+      const x = document.createElement('div');
+      x.className = "resource";
+      x.textContent = n;
+      notifList.appendChild(x.cloneNode(true));
+      notifList2.appendChild(x);
+    });
+  }
+
+  function renderTimeline(){
+    const t = JSON.parse(localStorage.getItem('timeline')||"[]");
+    timelineList.innerHTML = t.map(it=>`
+      <div class="tl-item"><div class="meta">${it.when}</div><div>${it.what}</div></div>
+    `).join('');
+  }
+
+  /* ---------- Actions ---------- */
+  function apply(id){
+    let applied = JSON.parse(localStorage.getItem('applied')||"[]");
+    const job = allInternships.find(j=>j.id===id);
+    if(!job) { alert("❌ Job not found!"); return; }
+    if(applied.some(j=>j.id===id)) { alert("✅ Already applied!"); return; }
+    applied.push(job);
+    localStorage.setItem('applied', JSON.stringify(applied));
+    addTimeline(`Applied to ${job.title}`);
+    unlock("First Application");
+    renderApplied(); updateStats();
+    alert("🎉 Application submitted!");
+  }
+
+  function removeApplication(id){
+    let applied = JSON.parse(localStorage.getItem('applied')||"[]").filter(j=>j.id!==id);
+    localStorage.setItem('applied', JSON.stringify(applied));
+    addTimeline("Removed an application");
+    renderApplied(); updateStats();
+  }
+
+  function saveJob(id){
+    let saved = JSON.parse(localStorage.getItem('saved')||"[]");
+    const job = allInternships.find(j=>j.id===id);
+    if(!job) { alert("❌ Job not found!"); return; }
+    if(saved.some(j=>j.id===id)) { alert("⭐ Already saved!"); return; }
+    saved.push(job); localStorage.setItem('saved', JSON.stringify(saved));
+    addTimeline(`Saved ${job.title}`);
+    unlock("Saver");
+    renderSaved(); updateStats();
+  }
+
+  function unsaveJob(id){
+    let saved = JSON.parse(localStorage.getItem('saved')||"[]").filter(j=>j.id!==id);
+    localStorage.setItem('saved', JSON.stringify(saved));
+    renderSaved(); updateStats();
+  }
+
+  function triggerResumeUpload(){
+    el('resumeUpload').click();
+  }
+
+  function uploadResume(){
+    const file = el("resumeUpload").files[0];
+    if(file){
+      localStorage.setItem("resumeFile", file.name);
+      el("resumeStoredName").textContent = file.name;
+      el("resumeStoredHint").textContent = "Resume stored successfully.";
+      localStorage.setItem("resumeScore", Math.floor(70 + Math.random()*30));
+      unlock("Resume Ready");
+      updateStats();
+      addTimeline("Updated Resume");
+    }
+  }
+
+  function renderStoredResume(){
+    const fileName = localStorage.getItem("resumeFile");
+    if (fileName) {
+      el("resumeStoredName").textContent = fileName;
+      el("resumeStoredHint").textContent = "Your latest resume is stored here for quick access.";
+    } else {
+      el("resumeStoredName").textContent = "No resume stored yet.";
+      el("resumeStoredHint").textContent = "Upload once and see your resume here.";
+    }
+  }
+
+  function mockScore(){
+    const score = Math.floor(70 + Math.random()*30);
+    localStorage.setItem("resumeScore", score);
+    el("statResume").textContent = score + "%";
+  }
+
+  function addTimeline(what){
+    const t = JSON.parse(localStorage.getItem('timeline')||"[]");
+    t.unshift({ when: new Date().toLocaleString(), what });
+    localStorage.setItem('timeline', JSON.stringify(t.slice(0,8)));
+    renderTimeline();
+  }
+
+  function unlock(badge){
+    const key="badges";
+    const list = JSON.parse(localStorage.getItem(key)||"[]");
+    if(!list.includes(badge)){ list.push(badge); localStorage.setItem(key, JSON.stringify(list)); renderBadges(); }
+  }
+
+  function renderBadges(){
+    const box = el("badgesBox");
+    const mini = el("miniBadges");
+    const list = JSON.parse(localStorage.getItem("badges")||"[]");
+    const chips = list.map(b=>`<span class="badge">${b}</span>`).join('');
+    box.innerHTML = chips || `<span class="badge">Profile Created</span>`;
+    mini.innerHTML = chips || `<span class="badge">Newbie</span>`;
+  }
+
+  function filterJobs(){
+    const q = (el("search").value||"").toLowerCase();
+    const filtered = allInternships.filter(j =>
+      j.title.toLowerCase().includes(q) ||
+      j.company.toLowerCase().includes(q) ||
+      j.location.toLowerCase().includes(q) ||
+      j.tags.join(" ").toLowerCase().includes(q)
+    );
+    internships = filtered.length > 0 ? filtered : allInternships;
+    totalPages = Math.ceil(internships.length / itemsPerPage);
+    renderInternshipPage(1);
+  }
+
+  function goto(id){
+    
+    document.getElementById(id)?.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  function updateStats(){
+    el("statApps").textContent = JSON.parse(localStorage.getItem('applied')||"[]").length;
+    el("statSaved").textContent = JSON.parse(localStorage.getItem('saved')||"[]").length;
+    const score = localStorage.getItem("resumeScore") || 0;
+    el("statResume").textContent = score + "%";
+  }
+
+  
+
+  function hydrateProfile(){
+    const users = JSON.parse(localStorage.getItem("rise_users")||"{}");
+    const email = localStorage.getItem("rise_user");
+    const user = users[email] || {};
+    el("nmMini").textContent = user.name || "Student";
+    el("emMini").textContent = email || "email@example.com";
+    el("heroTitle").textContent = `Welcome back, ${user.name||"Student"} 👋`;
+  }
+  function bootLists(){
+    renderResources(); renderEvents(); renderNotices(); renderTimeline();
+  }
+
+  window.onload = ()=>{
+    document.getElementById('yr').textContent = new Date().getFullYear();
+    hydrateProfile();
+    loadInternships();
+    renderApplied();
+    renderSaved();
+    renderReco();
+    renderBadges();
+    bootLists();
+    renderStoredResume();
+    updateStats();
+    unlock("Visited Dashboard");
+  }
+
+  function logout(){
+    localStorage.removeItem('rise_user');
+    window.location.href="index.html";
+  }
+
+  /* ---------- AI Learning & Interview Features ---------- */
+  function startLearningAI(){
+    alert("🚀 Launching AI Learning Assistant...\n\nThis will open an AI-powered learning session based on your skills and interests.");
+    // TODO: Connect to AI learning module
+    addTimeline("Started AI Learning");
+    unlock("Learning Started");
+  }
+
+  function openLearningSyllabus(){
+    alert("📚 Learning Curriculum\n\n✓ Foundation: JavaScript, Python, SQL\n✓ Intermediate: Web Development, Data Structures\n✓ Advanced: System Design, DSA\n\n(AI will customize based on your role)");
+    // TODO: Show detailed curriculum
+  }
+
+  function startInterviewAI(){
+    alert("🎤 Starting Mock Interview...\n\nAI will ask you technical questions and provide real-time feedback.\n\nPrepare for success!");
+    // TODO: Connect to AI interview module
+    addTimeline("Started Mock Interview");
+    unlock("Interview Prep");
+  }
+
+  function openInterviewTopics(){
+    alert("🎯 Interview Topics\n\n📌 Technical Round:\n• Data Structures\n• Algorithms\n• System Design\n• Database Design\n\n📌 HR Round:\n• Tell me about yourself\n• Why this company?\n• Strengths & weaknesses\n• Project experience\n\n(Click 'Start Interview' to begin AI mock session)");
+    // TODO: Show topic selection
+  }
+
+</script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAx3ZwxTYmtmvxfqtOp_LzKUpCTE9cjJyE",
+    authDomain: "rise-intern-47cd2.firebaseapp.com",
+    projectId: "rise-intern-47cd2",
+    storageBucket: "rise-intern-47cd2.firebasestorage.app",
+    messagingSenderId: "481360220760",
+    appId: "1:481360220760:web:9667c81d95355b3a76b02d"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+  const storage = firebase.storage();
+</script>
+
+
+<script>
+// Resume Parsing Logic
+let resumeParseFile = null;
+window.resumeProfile = null;
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+function handleParseUpload() {
+  const file = document.getElementById("parseUpload").files[0];
+  if (!file) return;
+  resumeParseFile = file;
+  document.getElementById("parseStatus").textContent = "Uploaded: " + file.name;
+  document.getElementById("parsedText").textContent = "";
+  document.getElementById("parsedSkills").innerHTML = "";
+  document.getElementById("parsedFeedback").innerHTML = "";
+  document.getElementById("parseMatches").innerHTML = "";
+  document.getElementById("parseScore").textContent = "0%";
+}
+
+async function extractTextFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let text = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items.map(item => item.str).join(' ');
+    text += pageText + '\n';
+  }
+  return text;
+}
+
+async function extractTextFromDocx(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  return result.value;
+}
+
+async function extractResumeText(file) {
+  const filename = file.name.toLowerCase();
+  if (filename.endsWith('.pdf')) {
+    return await extractTextFromPDF(file);
+  }
+  if (filename.endsWith('.docx')) {
+    return await extractTextFromDocx(file);
+  }
+  throw new Error('Unsupported resume format. Please upload a PDF or DOCX file.');
+}
+
+function parseResumeProfile(text) {
+  const lower = text.toLowerCase();
+  const skillBank = [
+    'java', 'python', 'javascript', 'react', 'angular', 'vue', 'html', 'css', 'sql', 'mysql', 'postgres', 'mongodb',
+    'node', 'express', 'django', 'flask', 'c++', 'c#', 'php', 'ruby', 'aws', 'azure', 'gcp', 'docker', 'kubernetes',
+    'machine learning', 'ml', 'data science', 'ai', 'artificial intelligence', 'nlp', 'deep learning', 'tensorflow',
+    'pytorch', 'excel', 'power bi', 'tableau', 'digital marketing', 'seo', 'content writing', 'research', 'product management',
+    'analysis', 'networking', 'security', 'design', 'illustrator', 'photoshop'
+  ];
+
+  const skills = Array.from(new Set(skillBank.filter(skill => {
+    const escaped = skill.replace(/[-\/\^$*+?.()|[\]{}]/g, '\\$&');
+    return new RegExp(`\\b${escaped}\\b`, 'i').test(text);
+  })));
+
+  const educationMatch = text.match(/\b(B\.Tech|BTech|B\.E|BE|B\.Sc|BSc|M\.Tech|MTech|MBA|M\.Sc|MSc|Bachelors?|Masters?)\b.*?(Computer|Information|Electronics|Mechanical|Civil|Science|Engineering|Management)?/i);
+  const education = educationMatch ? educationMatch[0].trim() : '';
+
+  let experienceYears = 0;
+  const yearMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:years|yrs|year|yr)/i);
+  const monthMatch = text.match(/(\d+)\s*(?:months|month)/i);
+  if (yearMatch) {
+    experienceYears = parseFloat(yearMatch[1]);
+  }
+  if (monthMatch) {
+    experienceYears += parseInt(monthMatch[1], 10) / 12;
+  }
+  experienceYears = Math.min(10, Math.round(experienceYears * 10) / 10);
+
+  const summarySkills = skills.length ? skills : ['Resume keywords not detected'];
+  const feedback = [];
+  if (!skills.length) feedback.push('No recognizable skills were detected. Consider listing technical keywords clearly.');
+  if (!education) feedback.push('Include your degree and major so recruiters know your educational background.');
+  if (experienceYears < 1) feedback.push('Highlight any internships, projects, or part-time work to show practical experience.');
+  if (feedback.length === 0) feedback.push('Your resume has strong keyword coverage. Keep it concise and achievement-oriented.');
+
+  return {
+    text,
+    skills: summarySkills,
+    education,
+    experienceYears,
+    feedback: feedback.join(' ')
+  };
+}
+
+function computeResumeScore(profile) {
+  let score = 20;
+  score += Math.min(profile.skills.length * 12, 50);
+  score += Math.min(profile.experienceYears * 7, 20);
+  if (profile.education) score += 10;
+  return Math.min(100, Math.max(0, Math.round(score)));
+}
+
+function computeJobMatchScore(job, profile) {
+  const jobText = `${job.title} ${job.company} ${job.tags.join(' ')}`.toLowerCase();
+  const skillMatches = profile.skills.reduce((count, skill) => {
+    const normalized = skill.toLowerCase();
+    return count + (jobText.includes(normalized) ? 1 : 0);
+  }, 0);
+  let score = 20 + Math.min(skillMatches * 18, 50);
+  if (profile.experienceYears >= 1 && /intern|junior|assistant|developer|engineer|research/.test(jobText)) score += 10;
+  if (/ai|machine learning|ml|data science/.test(jobText) && profile.skills.some(s => /ai|machine learning|ml|data science/.test(s.toLowerCase()))) score += 10;
+  return Math.min(100, Math.round(score));
+}
+
+function renderParseMatches(matches) {
+  const container = document.getElementById('parseMatches');
+  container.innerHTML = '';
+  if (!matches.length) {
+    container.innerHTML = '<p class="meta">No strong matches found yet.</p>';
+    return;
+  }
+  matches.forEach(job => {
+    const div = document.createElement('div');
+    div.className = 'job';
+    div.innerHTML = `
+      <div>
+        <h4>${job.title}</h4>
+        <p>${job.company} — ${job.location}</p>
+        <p style="color:var(--good); font-size:13px; margin:6px 0 0;">Match Score: ${job.matchScore}%</p>
+      </div>
+      <div class="row">
+        <button class="btn-subtle btn-good" onclick="apply(${job.id})">Apply</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function generateParseAI() {
+  if (!resumeParseFile) {
+    alert('Please upload a resume first.');
+    return;
+  }
+
+  try {
+    document.getElementById('parseStatus').textContent = 'Parsing resume...';
+    const text = await extractResumeText(resumeParseFile);
+    const profile = parseResumeProfile(text);
+    window.resumeProfile = profile;
+
+    const score = computeResumeScore(profile);
+    localStorage.setItem('resumeScore', score);
+
+    document.getElementById('parsedText').textContent = text.trim().slice(0, 3000) || 'No text could be extracted.';
+    document.getElementById('parsedSkills').innerHTML = profile.skills.map(s => `<span class="badge">${s}</span>`).join('');
+    document.getElementById('parsedFeedback').innerHTML = `<p>${profile.feedback}</p>`;
+    document.getElementById('parseScore').textContent = score + '%';
+    el('statResume').textContent = score + '%';
+    document.getElementById('parseStatus').textContent = `Parsed: ${resumeParseFile.name}`;
+
+    const matches = allInternships
+      .map(job => ({ ...job, matchScore: computeJobMatchScore(job, profile) }))
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, 4);
+    renderParseMatches(matches);
+    renderReco();
+    unlock('Resume Parsed');
+    updateStats();
+  } catch (err) {
+    console.error(err);
+    alert(err.message || 'Unable to parse resume. Please try a PDF or DOCX file.');
+    document.getElementById('parseStatus').textContent = 'Unable to parse file.';
+  }
+}
+</script>
+
+</body>
+</html>

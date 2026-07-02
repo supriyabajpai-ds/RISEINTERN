@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Admin — RiseIntern</title>
+
+<!-- Google fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"></script>
+
+<style>
+  :root{
+    --bg-1: #f5f9ff;
+    --bg-2: #eaf2ff;
+    --card: #ffffff;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-2: #7c3aed;
+    --success: #16a34a;
+    --danger: #ef4444;
+    --glass: rgba(255,255,255,0.8);
+    --shadow: rgba(16,24,40,0.08);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%; margin:0; font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+
+  body{
+    background: radial-gradient(800px 300px at 10% 10%, rgba(37,99,235,0.06), transparent 20%),
+                radial-gradient(700px 300px at 95% 80%, rgba(124,58,237,0.05), transparent 18%),
+                linear-gradient(180deg,var(--bg-1),var(--bg-2));
+    color:#0f172a;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    overflow-y:auto;
+  }
+
+  /* animated subtle shapes */
+  .bg-shapes{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+  .shape {
+    position:absolute; border-radius:48px; opacity:0.12; transform:rotate(12deg);
+    filter: blur(18px);
+    animation: floatShape 12s ease-in-out infinite;
+  }
+  .shape.a{ width:420px;height:220px;background:linear-gradient(90deg,#c7d2fe,#bfdbfe); left:-120px; top:-40px; animation-duration:18s; }
+  .shape.b{ width:320px;height:320px;background:linear-gradient(90deg,#e9d5ff,#dbeafe); right:-140px; bottom:-80px; animation-duration:22s; }
+  .shape.c{ width:180px;height:180px;background:linear-gradient(90deg,#bae6fd,#dbeafe); left:20%; top:60%; animation-duration:16s; }
+
+  @keyframes floatShape{
+    0%{ transform: translateY(0) rotate(0deg) }
+    50%{ transform: translateY(-18px) rotate(6deg) }
+    100%{ transform: translateY(0) rotate(0deg) }
+  }
+
+  /* Layout */
+  .app{
+    display:grid;
+    grid-template-columns: 260px 1fr;
+    gap:28px;
+    padding:28px;
+    position:relative;
+    z-index:1;
+    min-height:100vh;
+  }
+
+  /* Sidebar */
+  aside.sidebar{
+    background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.85));
+    border-radius:12px;
+    box-shadow: 0 8px 28px var(--shadow);
+    padding:20px;
+    position:sticky; top:20px; height:calc(100vh - 40px);
+    overflow:auto;
+  }
+  .brand{ display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+  .logo{
+    width:48px;height:48px;border-radius:10px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    color:white; display:grid; place-items:center; font-weight:800; font-size:18px;
+    box-shadow:0 6px 18px rgba(37,99,235,0.14);
+  }
+  aside h3{ margin:0; font-size:18px; color:#0b1220; font-weight:700; }
+  nav.side-nav{ margin-top:16px; display:flex; flex-direction:column; gap:6px; }
+  nav.side-nav a{
+    display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:10px;
+    color:#0b1220; text-decoration:none; font-weight:600;
+    transition:all .18s ease;
+  }
+  nav.side-nav a .ico{ width:34px; height:34px; border-radius:8px; display:grid; place-items:center; }
+  nav.side-nav a:hover{ transform:translateX(6px); background:linear-gradient(90deg,rgba(37,99,235,0.08),rgba(124,58,237,0.06)); }
+
+  .sidebar .small{ color:var(--muted); font-size:13px; margin-top:14px; }
+
+  /* Main */
+  main{
+    padding:10px 6px 40px 6px;
+    overflow:visible;
+  }
+
+  header.topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    margin-bottom:18px;
+  }
+
+  .hero{
+    background: linear-gradient(90deg, rgba(255,255,255,0.9), rgba(255,255,255,0.92));
+    border-radius:12px; padding:20px;
+    display:flex; gap:18px; align-items:center; justify-content:space-between;
+    box-shadow: 0 10px 30px var(--shadow);
+  }
+  .hero-left h1{
+    margin:0; font-size:20px; color:#071129;
+    letter-spacing:0.2px;
+  }
+  .hero-left p{ margin:6px 0 0 0; color:var(--muted); font-size:13px; }
+
+  .hero-right{ display:flex; gap:12px; align-items:center; }
+
+  /* Stats grid */
+  .stats-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-top:14px; }
+  .stat{
+    background:var(--card); border-radius:10px; padding:14px;
+    box-shadow:0 8px 20px var(--shadow); min-height:84px;
+    display:flex; flex-direction:column; justify-content:center; gap:6px;
+  }
+  .stat .label{ color:var(--muted); font-size:13px }
+  .stat .value{ font-size:20px; font-weight:700; color:#071129 }
+
+  /* Two-column main grid */
+  .grid{
+    display:grid; grid-template-columns: 2fr 1fr; gap:16px; margin-top:18px;
+  }
+
+  /* Card */
+  .card{
+    background:var(--card); border-radius:12px; padding:16px;
+    box-shadow: 0 10px 30px var(--shadow);
+  }
+  .card h2{ margin:0 0 8px 0; font-size:16px; color:#071129 }
+  .muted{ color:var(--muted); font-size:13px }
+
+  /* Table */
+  table{ width:100%; border-collapse:collapse; margin-top:12px; font-size:14px; }
+  th, td{ text-align:left; padding:10px 8px; border-bottom:1px solid rgba(6,10,15,0.03) }
+  th{ color:var(--muted); font-weight:600; font-size:13px; }
+
+  .btn{
+    display:inline-block; padding:8px 12px; border-radius:8px; border:0; cursor:pointer; font-weight:700;
+    background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:white; box-shadow:0 8px 20px rgba(37,99,235,0.12);
+  }
+  .btn.ghost{ background:transparent; color:var(--accent); border:1px solid rgba(6,10,15,0.06); box-shadow:none; }
+
+  .actions{ display:flex; gap:8px; }
+
+  /* pending card list */
+  .pending-list{ display:grid; gap:10px; }
+  .pending-item{ display:flex; gap:12px; align-items:flex-start; border-radius:10px; padding:12px; background:linear-gradient(180deg,rgba(6,10,15,0.02), rgba(6,10,15,0.01)) }
+
+  /* announcements */
+  .announce-form{ display:flex; gap:8px; margin-top:8px; }
+  .announce-form input{ flex:1; padding:10px; border-radius:8px; border:1px solid rgba(6,10,15,0.06) }
+
+  /* timeline */
+  .timeline{ list-style:none; padding-left:0; margin-top:8px }
+  .timeline li{ margin-bottom:12px; padding-left:12px; border-left:3px solid rgba(6,10,15,0.05) }
+
+  /* footer */
+  footer{ margin-top:20px; color:var(--muted); font-size:13px; text-align:center; padding-top:18px }
+
+  /* responsive */
+  @media (max-width:1100px){
+    .app{ grid-template-columns: 1fr; padding:18px; }
+    aside.sidebar{ position:relative; height:auto; width:100%; display:flex; flex-direction:row; gap:10px; align-items:center; padding:12px; overflow:auto }
+    nav.side-nav{ flex-direction:row; gap:8px; overflow:auto }
+    main{ margin-top:12px }
+    .stats-grid{ grid-template-columns: repeat(2,1fr) }
+    .grid{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <!-- decorative background shapes -->
+  <div class="bg-shapes" aria-hidden="true">
+    <div class="shape a"></div>
+    <div class="shape b"></div>
+    <div class="shape c"></div>
+  </div>
+
+  <div class="app" role="application">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" aria-label="Sidebar">
+      <div class="brand" role="img" aria-label="RiseIntern">
+        <div class="logo">RI</div>
+        <div>
+          <h3>RiseIntern</h3>
+          <div class="small">Admin Portal</div>
+        </div>
+      </div>
+
+      <nav class="side-nav" aria-label="Main navigation">
+        <a href="#dashboard" data-section="dashboard"><span class="ico">🏠</span> Dashboard</a>
+        <a href="#users" data-section="users"><span class="ico">👥</span> Manage Users</a>
+        <a href="#approvals" data-section="approvals"><span class="ico">✅</span> Approve Jobs</a>
+        <a href="#analytics" data-section="analytics"><span class="ico">📊</span> Analytics</a>
+        <a href="#announcements" data-section="announcements"><span class="ico">📢</span> Announcements</a>
+        <a href="#settings" data-section="settings"><span class="ico">⚙️</span> Settings</a>
+      </nav>
+
+      <div style="margin-top:auto">
+        <div class="small">Signed in as</div>
+        <div style="font-weight:700; margin-top:6px">System Admin</div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main>
+      <!-- TOP / HERO -->
+      <header class="topbar">
+        <div class="hero" id="dashboard">
+          <div class="hero-left">
+            <div style="display:flex;flex-direction:column">
+              <h1 id="typing">Welcome back, Admin —</h1>
+              <p class="muted">Overview of platform activity and quick actions.</p>
+            </div>
+          </div>
+          <div class="hero-right">
+            <div style="text-align:right">
+              <div style="font-size:12px;color:var(--muted)">Today</div>
+              <div style="font-weight:800;font-size:16px" id="todayDate"></div>
+            </div>
+            <div style="width:12px"></div>
+            <button class="btn" id="btnAddDemo">Add Demo Data</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- STATS -->
+      <section class="stats-grid" aria-hidden="false">
+        <div class="stat card">
+          <div class="label">Total Users</div>
+          <div class="value" id="statUsers">0</div>
+          <div class="muted">Students + Recruiters</div>
+        </div>
+        <div class="stat card">
+          <div class="label">Active Jobs</div>
+          <div class="value" id="statJobs">0</div>
+          <div class="muted">Open & Approved</div>
+        </div>
+        <div class="stat card">
+          <div class="label">Applications</div>
+          <div class="value" id="statApps">0</div>
+          <div class="muted">Total submissions</div>
+        </div>
+        <div class="stat card">
+          <div class="label">Announcements</div>
+          <div class="value" id="statAnnouncements">0</div>
+          <div class="muted">Active notices</div>
+        </div>
+      </section>
+
+      <!-- MAIN GRID -->
+      <div class="grid">
+        <!-- left column -->
+        <div>
+          <!-- Users table -->
+          <section id="users" class="card" aria-labelledby="usersTitle">
+            <h2 id="usersTitle">Manage Users</h2>
+            <div class="muted">Search, ban, or remove users from the platform.</div>
+
+            <div style="margin-top:12px">
+              <input id="userSearch" placeholder="Search by name or email" style="width:100%; padding:10px; border-radius:8px; border:1px solid rgba(6,10,15,0.03)" />
+            </div>
+
+            <table id="usersTable" aria-describedby="usersTitle">
+              <thead>
+                <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </section>
+
+          <!-- Approvals -->
+          <section id="approvals" class="card" style="margin-top:14px">
+            <h2>Pending Job Approvals</h2>
+            <div class="muted">Review job postings submitted by recruiters.</div>
+            <div class="pending-list" id="pendingList" style="margin-top:12px"></div>
+          </section>
+
+          <!-- Timeline -->
+          <section class="card" style="margin-top:14px">
+            <h2>Activity Timeline</h2>
+            <ul class="timeline" id="timeline"></ul>
+          </section>
+        </div>
+
+        <!-- right column -->
+        <aside>
+          <!-- Analytics -->
+          <section id="analytics" class="card">
+            <h2>Platform Analytics</h2>
+            <canvas id="chartUsers" style="width:100%;height:220px"></canvas>
+            <div style="display:flex;gap:10px;margin-top:8px">
+              <div style="flex:1">
+                <div class="muted">Users growth (last 7 days)</div>
+                <div id="miniUsers" style="font-weight:800;font-size:18px">—</div>
+              </div>
+              <div style="flex:1">
+                <div class="muted">Jobs posted</div>
+                <div id="miniJobs" style="font-weight:800;font-size:18px">—</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Announcements -->
+          <section id="announcements" class="card" style="margin-top:14px">
+            <h2>Announcements</h2>
+            <div class="muted">Create messages users will see on login.</div>
+            <div class="announce-form">
+              <input id="announceText" placeholder="Write announcement..." aria-label="Announcement text" />
+              <button class="btn" id="announceBtn">Publish</button>
+            </div>
+            <div id="announceList" style="margin-top:12px"></div>
+          </section>
+
+          <!-- Settings -->
+          <section id="settings" class="card" style="margin-top:14px">
+            <h2>Platform Settings</h2>
+            <div class="muted">Quick actions</div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn ghost" id="btnClearData">Clear Demo Data</button>
+              <button class="btn" id="btnExport">Export JSON</button>
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <footer>
+        <div style="max-width:900px;margin:18px auto 36px auto;color:var(--muted);font-size:13px">
+          RiseIntern Admin • Manage users, approve jobs and monitor applications — Built for your control panel.
+        </div>
+      </footer>
+    </main>
+  </div>
+
+<script>
+/* -------------------------
+   Demo app state + helpers
+   ------------------------- */
+
+const LS_KEYS = {
+  users: 'ri_users_demo',
+  jobs: 'ri_jobs_demo',
+  apps: 'ri_apps_demo',
+  announcements: 'ri_announcements_demo',
+  timeline: 'ri_timeline_demo'
+};
+
+function save(key, data){ localStorage.setItem(key, JSON.stringify(data)); }
+function load(key){ try{ return JSON.parse(localStorage.getItem(key)) || []; } catch(e){ return []; } }
+
+/* ---------- Demo data creation ---------- */
+function ensureDemoData(){
+  if(!localStorage.getItem(LS_KEYS.users)){
+    const users = [
+      { id: 1, name:'Aisha Kapoor', email:'aisha@example.com', role:'student', status:'active' },
+      { id: 2, name:'Rahul Mehta', email:'rahul@company.com', role:'recruiter', status:'active' },
+      { id: 3, name:'Neha Singh', email:'neha@student.com', role:'student', status:'active' }
+    ];
+    save(LS_KEYS.users, users);
+  }
+  if(!localStorage.getItem(LS_KEYS.jobs)){
+    const jobs = [
+      { id: 1001, title:'Frontend Intern', company:'PixelPlay', location:'Remote', status:'approved' },
+      { id: 1002, title:'Data Science Intern', company:'DataWorks', location:'Bengaluru', status:'pending' }
+    ];
+    save(LS_KEYS.jobs, jobs);
+  }
+  if(!localStorage.getItem(LS_KEYS.apps)){
+    const apps = [
+      { id:1, jobId:1001, userId:1, status:'applied' },
+      { id:2, jobId:1002, userId:3, status:'applied' }
+    ];
+    save(LS_KEYS.apps, apps);
+  }
+  if(!localStorage.getItem(LS_KEYS.announcements)){
+    save(LS_KEYS.announcements, [{id:1, text:'Welcome to RiseIntern platform!', time:new Date().toLocaleString()}]);
+  }
+  if(!localStorage.getItem(LS_KEYS.timeline)){
+    save(LS_KEYS.timeline, [{when:new Date().toLocaleString(), what:'System initialized — demo data created.'}]);
+  }
+}
+
+/* ---------- UI renderers ---------- */
+function renderUsers(filter=''){
+  const tbody = document.querySelector('#usersTable tbody');
+  tbody.innerHTML = '';
+  let users = load(LS_KEYS.users);
+  if(filter) users = users.filter(u=> (u.name+' '+u.email+' '+u.role).toLowerCase().includes(filter.toLowerCase()));
+  users.forEach(u=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${u.name}</td>
+      <td>${u.email}</td>
+      <td style="text-transform:capitalize">${u.role}</td>
+      <td>${u.status}</td>
+      <td>
+        <div class="actions">
+          <button class="btn ghost" data-action="ban" data-id="${u.id}">Ban</button>
+          <button class="btn ghost" data-action="delete" data-id="${u.id}">Delete</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderPendingJobs(){
+  const pending = load(LS_KEYS.jobs).filter(j=> j.status === 'pending');
+  const container = document.getElementById('pendingList');
+  container.innerHTML = '';
+  if(!pending.length){
+    container.innerHTML = '<div class="muted">No pending jobs for approval.</div>';
+    return;
+  }
+  pending.forEach(j=>{
+    const div = document.createElement('div');
+    div.className = 'pending-item';
+    div.innerHTML = `
+      <div style="flex:1">
+        <strong>${j.title}</strong>
+        <div class="muted" style="margin-top:6px">${j.company} • ${j.location}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn" data-action="approve" data-id="${j.id}">Approve</button>
+        <button class="btn ghost" data-action="reject" data-id="${j.id}">Reject</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function renderAnnouncements(){
+  const list = load(LS_KEYS.announcements);
+  const el = document.getElementById('announceList');
+  el.innerHTML = list.map(a=>`
+    <div style="border-radius:8px;padding:10px;background:linear-gradient(180deg,rgba(6,10,15,0.02),rgba(6,10,15,0.01));margin-bottom:8px">
+      <div style="font-weight:700">${a.text}</div>
+      <div class="muted" style="font-size:12px;margin-top:6px">${a.time}</div>
+    </div>
+  `).join('');
+}
+
+function renderTimeline(){
+  const t = load(LS_KEYS.timeline);
+  const container = document.getElementById('timeline');
+  container.innerHTML = t.map(item => `<li><div style="font-weight:700">${item.what}</div><div class="muted" style="font-size:12px">${item.when}</div></li>`).join('');
+}
+
+function updateStats(){
+  const users = load(LS_KEYS.users);
+  const jobs = load(LS_KEYS.jobs);
+  const apps = load(LS_KEYS.apps);
+  const ann = load(LS_KEYS.announcements);
+
+  document.getElementById('statUsers').textContent = users.length;
+  document.getElementById('statJobs').textContent = jobs.filter(j=> j.status === 'approved').length;
+  document.getElementById('statApps').textContent = apps.length;
+  document.getElementById('statAnnouncements').textContent = ann.length;
+
+  document.getElementById('miniUsers').textContent = users.length;
+  document.getElementById('miniJobs').textContent = jobs.length;
+}
+
+/* ---------- Interactions ---------- */
+
+// quick helper to add timeline entry
+function addTimeline(text){
+  const t = load(LS_KEYS.timeline);
+  t.unshift({ when:new Date().toLocaleString(), what:text });
+  save(LS_KEYS.timeline, t.slice(0,30));
+  renderTimeline();
+}
+
+document.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+
+  // user actions (ban / delete)
+  if(btn.dataset.action === 'ban'){
+    const id = Number(btn.dataset.id);
+    let users = load(LS_KEYS.users);
+    users = users.map(u=> u.id===id ? {...u, status: u.status==='banned' ? 'active' : 'banned'} : u);
+    save(LS_KEYS.users, users);
+    renderUsers(document.getElementById('userSearch').value);
+    addTimeline(`User ${id} status changed`);
+    updateStats();
+  }
+
+  if(btn.dataset.action === 'delete'){
+    const id = Number(btn.dataset.id);
+    let users = load(LS_KEYS.users);
+    users = users.filter(u=> u.id !== id);
+    save(LS_KEYS.users, users);
+    renderUsers(document.getElementById('userSearch').value);
+    addTimeline(`User ${id} deleted`);
+    updateStats();
+  }
+
+  // job approve/reject
+  if(btn.dataset.action === 'approve'){
+    const id = Number(btn.dataset.id);
+    let jobs = load(LS_KEYS.jobs);
+    jobs = jobs.map(j=> j.id===id ? {...j, status:'approved'} : j);
+    save(LS_KEYS.jobs, jobs);
+    renderPendingJobs();
+    addTimeline(`Job ${id} approved`);
+    updateStats();
+    refreshCharts();
+  }
+
+  if(btn.dataset.action === 'reject'){
+    const id = Number(btn.dataset.id);
+    let jobs = load(LS_KEYS.jobs);
+    jobs = jobs.filter(j=> j.id !== id);
+    save(LS_KEYS.jobs, jobs);
+    renderPendingJobs();
+    addTimeline(`Job ${id} rejected`);
+    updateStats();
+    refreshCharts();
+  }
+
+  // announce publish
+  if(btn.id === 'announceBtn'){
+    const text = document.getElementById('announceText').value.trim();
+    if(!text) return alert('Enter an announcement');
+    const list = load(LS_KEYS.announcements);
+    const item = { id: Date.now(), text, time: new Date().toLocaleString() };
+    list.unshift(item);
+    save(LS_KEYS.announcements, list);
+    document.getElementById('announceText').value = '';
+    renderAnnouncements();
+    updateStats();
+    addTimeline('Announcement published');
+  }
+
+  // add demo data
+  if(btn.id === 'btnAddDemo'){
+    ensureDemoData();
+    addTimeline('Demo data ensured');
+    renderAll();
+    refreshCharts();
+  }
+
+  // clear demo data
+  if(btn.id === 'btnClearData'){
+    if(!confirm('Clear all demo data?')) return;
+    [LS_KEYS.users,LS_KEYS.jobs,LS_KEYS.apps,LS_KEYS.announcements,LS_KEYS.timeline].forEach(k=> localStorage.removeItem(k));
+    ensureDemoData();
+    renderAll();
+    refreshCharts();
+  }
+
+  // export JSON
+  if(btn.id === 'btnExport'){
+    const exportObj = {
+      users: load(LS_KEYS.users),
+      jobs: load(LS_KEYS.jobs),
+      apps: load(LS_KEYS.apps),
+      announcements: load(LS_KEYS.announcements),
+      timeline: load(LS_KEYS.timeline)
+    };
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'riseintern_admin_export.json'; document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+});
+
+/* ---------- Search users ---------- */
+document.getElementById('userSearch').addEventListener('input', (e)=>{
+  renderUsers(e.target.value);
+});
+
+/* ---------- Post job submission (simulate recruiter posting) ---------- */
+(function wireJobPostingForm(){
+  // For admin we allow creating a job on behalf of recruiter (optional)
+  // Reuse pending queue: let's listen to 'Add Demo Data' only for simplicity
+})();
+
+/* ---------- Announce publish (Enter key) ---------- */
+document.getElementById('announceText').addEventListener('keyup', (e)=>{
+  if(e.key === 'Enter') document.getElementById('announceBtn').click();
+});
+
+/* ---------- Charts ---------- */
+let usersChart;
+function initCharts(){
+  const ctx = document.getElementById('chartUsers').getContext('2d');
+  usersChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: get7DayLabels(),
+      datasets: [{
+        label: 'Users',
+        data: getRandomSeries(7, 80, 150),
+        borderColor: 'rgba(37,99,235,0.95)',
+        backgroundColor: 'rgba(37,99,235,0.08)',
+        tension:0.28,
+        pointRadius:4
+      }]
+    },
+    options: {
+      responsive:true,
+      plugins:{ legend:{ display:false } },
+      scales:{ y:{ beginAtZero:true } }
+    }
+  });
+}
+
+function refreshCharts(){
+  if(!usersChart) return;
+  usersChart.data.datasets[0].data = getRandomSeries(7, 80, 150);
+  usersChart.update();
+}
+
+/* small utilities for charts */
+function get7DayLabels(){
+  const d = new Date();
+  const labels = [];
+  for(let i=6;i>=0;i--){
+    const n = new Date(d); n.setDate(d.getDate()-i);
+    labels.push(n.toLocaleDateString(undefined, {weekday:'short'}));
+  }
+  return labels;
+}
+function getRandomSeries(n, min, max){
+  const arr=[]; for(let i=0;i<n;i++) arr.push(Math.floor(Math.random()*(max-min)+min)); return arr;
+}
+
+/* ---------- Tiny typing animation for hero ---------- */
+function startTyping(){
+  const el = document.getElementById('typing');
+  const phrases = [
+    'Welcome back, Admin —',
+    'Monitor platform health & users',
+    'Approve jobs and manage users',
+    'Announcements at your fingertips'
+  ];
+  let p = 0, i = 0, forward = true;
+  setInterval(()=>{
+    const txt = phrases[p];
+    if(forward){
+      i++;
+      el.textContent = txt.slice(0,i);
+      if(i >= txt.length) { forward = false; setTimeout(()=>{},800); }
+    } else {
+      i--;
+      el.textContent = txt.slice(0,i);
+      if(i <= 0){ forward = true; p = (p+1)%phrases.length; }
+    }
+  }, 70);
+}
+
+/* ---------- Date display ---------- */
+function showDate(){
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString();
+}
+
+/* ---------- Render all ---------- */
+function renderAll(){
+  renderUsers('');
+  renderPendingJobs();
+  renderAnnouncements();
+  renderTimeline();
+  updateStats();
+}
+
+/* ---------- Ensure demo + init ---------- */
+ensureDemoData();
+renderAll();
+initCharts();
+refreshCharts();
+startTyping();
+showDate();
+
+/* ---------- small keyboard shortcuts (for power users) ---------- */
+document.addEventListener('keydown', (e)=>{
+  if(e.ctrlKey && e.key === 'd'){ // Ctrl+D -> add demo
+    document.getElementById('btnAddDemo').click();
+  }
+});
+</script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAx3ZwxTYmtmvxfqtOp_LzKUpCTE9cjJyE",
+    authDomain: "rise-intern-47cd2.firebaseapp.com",
+    projectId: "rise-intern-47cd2",
+    storageBucket: "rise-intern-47cd2.firebasestorage.app",
+    messagingSenderId: "481360220760",
+    appId: "1:481360220760:web:9667c81d95355b3a76b02d"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+  const storage = firebase.storage();
+</script>
+
+</body>
+</html>

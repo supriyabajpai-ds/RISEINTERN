@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>RISE Intern — Education Bot</title>
+	<style>
+		:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+		body{margin:0;background:#f3f6fb;color:#111}
+		.bot-container{max-width:720px;margin:32px auto;background:#fff;border-radius:10px;box-shadow:0 6px 24px rgba(16,24,40,.08);overflow:hidden}
+		header{background:#2b6cb0;color:#fff;padding:16px 20px;font-size:18px;font-weight:600}
+		.chat{height:520px;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(180deg,#fbfdff,#f7fbff)}
+		.msg{max-width:78%;padding:10px 12px;border-radius:12px;line-height:1.35}
+		.user{align-self:flex-end;background:#2b6cb0;color:#fff;border-bottom-right-radius:4px}
+		.bot{align-self:flex-start;background:#eef2ff;color:#0b1220;border-bottom-left-radius:4px}
+		.meta{font-size:12px;opacity:.7;margin-bottom:6px}
+		.input{display:flex;border-top:1px solid #e6eef8;padding:12px}
+		.input input{flex:1;padding:10px 12px;font-size:15px;border-radius:8px;border:1px solid #dbe9ff}
+		.input button{margin-left:8px;padding:10px 14px;background:#2b6cb0;color:#fff;border:none;border-radius:8px;cursor:pointer}
+		.suggestions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+		.chip{background:#eef6ff;padding:6px 10px;border-radius:999px;font-size:13px;cursor:pointer;border:1px solid #def}
+		@media (max-width:640px){.bot-container{margin:16px}}
+	</style>
+</head>
+<body>
+	<div class="bot-container">
+		<header>RISE Intern — Education Bot</header>
+		<div id="chat" class="chat" aria-live="polite"></div>
+
+		<div style="padding:12px 16px;border-top:1px solid #eef6ff">
+			<div class="suggestions" id="suggestions"></div>
+			<form id="inputForm" class="input" autocomplete="off">
+				<input id="message" name="message" placeholder="Ask about internships, resumes, interviews, or majors..." />
+				<button type="submit">Send</button>
+			</form>
+		</div>
+	</div>
+
+	<script>
+		const chat = document.getElementById('chat');
+		const form = document.getElementById('inputForm');
+		const input = document.getElementById('message');
+		const suggestionsEl = document.getElementById('suggestions');
+
+		const suggestions = [
+			'How to prepare for an internship interview',
+			'Resume tips for interns',
+			'Which major fits software internships',
+			'How to apply on RISE Intern',
+			'Follow-up email after interview'
+		];
+
+		function appendMessage(role, text){
+			const wrap = document.createElement('div');
+			const meta = document.createElement('div');
+			meta.className = 'meta';
+			meta.textContent = role === 'user' ? 'You' : 'Education Bot';
+			const msg = document.createElement('div');
+			msg.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+			msg.textContent = text;
+			wrap.appendChild(meta);
+			wrap.appendChild(msg);
+			chat.appendChild(wrap);
+			chat.scrollTop = chat.scrollHeight;
+		}
+
+		// Lightweight rule-based bot. Extend by adding patterns.
+		const knowledge = [
+			{patterns: [/resume/i, /cv/i, /format/i], reply: 'Keep your resume to one page, list relevant projects, use bullet points for impact, and include links to your GitHub or portfolio.'},
+			{patterns: [/interview/i, /prepare/i, /tips/i], reply: 'Practice common technical questions, prepare 3-4 stories using the STAR method, research the company, and ask thoughtful questions at the end.'},
+			{patterns: [/internship/i, /apply/i], reply: 'Check application deadlines, tailor your resume and cover letter, apply early, and highlight relevant coursework and projects.'},
+			{patterns: [/major/i, /degree/i, /computer|software|cs|engineering/i], reply: 'Computer Science, Software Engineering, and related majors are common for software internships, but strong projects and skills matter more than the major itself.'},
+			{patterns: [/email/i, /follow[- ]?up/i], reply: 'Send a short thank-you email within 24 hours, mention one specific thing you discussed, and reiterate interest.'},
+			{patterns: [/projects?/i, /portfolio/i], reply: 'Show 2–3 polished projects with clear READMEs and deployed demos. Explain your role and technologies used.'}
+		];
+
+		function botAnswer(text){
+			const t = text.toLowerCase();
+			for(const item of knowledge){
+				for(const p of item.patterns){
+					if(p.test(t)) return item.reply;
+				}
+			}
+			// fallback: try simple keyword matching for majors and steps
+			if(/how to apply|apply on rise|rise intern|rise/i.test(t)){
+				return 'To apply on RISE Intern, find the listing, prepare your resume and cover letter, and submit through the application link. Check the internship description for required materials.';
+			}
+			return "I can help with internships, resumes, majors, interviews — try asking e.g. 'resume tips' or select a suggestion.";
+		}
+
+		function handleUserMessage(text){
+			if(!text.trim()) return;
+			appendMessage('user', text);
+			input.value = '';
+			// show typing indicator
+			const typing = document.createElement('div');
+			typing.className = 'msg bot';
+			typing.textContent = 'Typing...';
+			const meta = document.createElement('div'); meta.className='meta'; meta.textContent='Education Bot';
+			const wrap = document.createElement('div'); wrap.appendChild(meta); wrap.appendChild(typing);
+			chat.appendChild(wrap);
+			chat.scrollTop = chat.scrollHeight;
+
+			setTimeout(()=>{
+				// remove typing
+				chat.removeChild(wrap);
+				const answer = botAnswer(text);
+				appendMessage('bot', answer);
+			}, 600 + Math.random()*800);
+		}
+
+		form.addEventListener('submit', e=>{e.preventDefault(); handleUserMessage(input.value)});
+
+		// populate suggestions
+		suggestions.forEach(s => {
+			const b = document.createElement('button');
+			b.type = 'button'; b.className = 'chip'; b.textContent = s;
+			b.addEventListener('click', ()=> handleUserMessage(s));
+			suggestionsEl.appendChild(b);
+		});
+
+		// first bot greeting
+		appendMessage('bot', 'Hi — I can help with internships, resume tips, interview prep, and majors. Try a question or pick a suggestion below.');
+
+		// small keyboard accessibility: Enter in input submits
+		input.addEventListener('keydown', e=>{
+			if(e.key === 'Enter' && !e.shiftKey){
+				e.preventDefault();
+				form.dispatchEvent(new Event('submit', {cancelable:true}));
+			}
+		});
+	</script>
+</body>
+</html>

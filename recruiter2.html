@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"></script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recruiter Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* General Reset */
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+
+    body {
+      display: flex;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #f1f5f9;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: #1e293b;
+      padding: 20px;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      box-shadow: 4px 0 12px rgba(0,0,0,0.4);
+    }
+    .sidebar h2 {
+      color: #38bdf8;
+      margin-bottom: 25px;
+    }
+    .sidebar nav a {
+      display: block;
+      margin: 12px 0;
+      padding: 10px 15px;
+      border-radius: 6px;
+      color: #f1f5f9;
+      text-decoration: none;
+      transition: 0.3s;
+    }
+    .sidebar nav a:hover {
+      background: #334155;
+      color: #38bdf8;
+    }
+
+    /* Main content */
+    .content {
+      margin-left: 260px;
+      padding: 20px 40px;
+      flex: 1;
+    }
+
+    .hero {
+      background: linear-gradient(90deg, #38bdf8, #3b82f6);
+      color: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+      animation: fadeDown 1s ease;
+    }
+    @keyframes fadeDown {
+      from {opacity:0; transform: translateY(-20px);}
+      to {opacity:1; transform: translateY(0);}
+    }
+
+    .card {
+      background: #1e293b;
+      margin: 20px 0;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+      transition: transform 0.3s ease;
+    }
+    .card:hover { transform: translateY(-4px); }
+    .card h2 { color: #d2df29; margin-bottom: 15px; }
+
+    input, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    input, textarea {
+      background: #0f172a;
+      color: #f1f5f9;
+    }
+    button {
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover { background: #3b82f6; color: #fff; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #334155;
+      text-align: left;
+    }
+    th { background: #0f172a; color: #38bdf8; }
+
+    /* Extra sections */
+    .activity {
+      border-left: 3px solid #38bdf8;
+      margin: 10px 0;
+      padding-left: 12px;
+    }
+    .message {
+      background: #0f172a;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 6px 0;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      padding: 15px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <h2>Recruiter</h2>
+    <nav>
+      <a href="#post">📢 Post Internship</a>
+      <a href="#manage">🗂 Manage Postings</a>
+      <a href="#applications">📄 Applications</a>
+      <a href="#insights">📊 Insights</a>
+      <a href="#activities">📌 Activities</a>
+      <a href="#messages">💬 Messages</a>
+      <a href="#profile">⚙️ Profile</a>
+      <a href="#" onclick="logout()">🚪 Logout</a>
+    </nav>
+  </aside>
+
+  <!-- Content -->
+  <main class="content">
+    <!-- Hero -->
+    <section class="hero">
+      <h1>Welcome, Recruiter 👋</h1>
+      <p>Post internships, review applications, and manage your hiring process.</p>
+    </section>
+
+    <!-- Post Internship -->
+    <section id="post" class="card">
+      <h2>📢 Post New Internship</h2>
+      <form id="postForm">
+        <input type="text" placeholder="Internship Title" required>
+        <input type="text" placeholder="Location" required>
+        <textarea placeholder="Description" required></textarea>
+        <button type="submit">Post Internship</button>
+      </form>
+      <p id="postMessage"></p>
+    </section>
+
+    <!-- Manage Postings -->
+    <section id="manage" class="card">
+      <h2>🗂 Your Posted Internships</h2>
+      <ul id="postingList"></ul>
+    </section>
+
+    <!-- Applications -->
+    <section id="applications" class="card">
+      <h2>📄 Applications</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Internship</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="applicationTable">
+          <!-- populated by JS: each row includes View Resume, Edit Internship, Delete Internship -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Insights -->
+    <section id="insights" class="card">
+      <h2>📊 Application Insights</h2>
+      <canvas id="insightChart"></canvas>
+    </section>
+
+    <!-- Activities -->
+    <section id="activities" class="card">
+      <h2>📌 Recent Activities</h2>
+      <div class="activity">✅ Internship "Frontend Developer" Posted</div>
+      <div class="activity">📄 5 New Applications Received</div>
+      <div class="activity">👤 Profile Updated</div>
+    </section>
+
+    <!-- Messages -->
+    <section id="messages" class="card">
+      <h2>💬 Messages from Applicants</h2>
+      <div class="message"><strong>Alice:</strong> I’m excited about this role!</div>
+      <div class="message"><strong>Rahul:</strong> Please check my resume.</div>
+    </section>
+
+    <!-- Profile -->
+    <section id="profile" class="card">
+      <h2>⚙️ Profile & Settings</h2>
+      <p><strong>Name:</strong> Recruiter Name</p>
+      <p><strong>Company:</strong> ABC Pvt Ltd</p>
+      <button>Edit Profile</button>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      © 2025 Recruiter Dashboard | Designed with 💙
+    </footer>
+  </main>
+
+  <!-- Resume viewer modal -->
+  <div id="resumeModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:50;">
+    <div style="background:#0f172a; padding:18px; width:90%; max-width:900px; border-radius:8px; color:#fff;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <strong>Student Resume</strong>
+        <button id="closeResume" style="background:#ef4444; color:#fff; border:none; padding:6px 10px; border-radius:6px;">Close</button>
+      </div>
+      <div id="resumeContent" style="margin-top:12px; min-height:320px; background:#071025; border-radius:6px; overflow:auto;">
+        <!-- iframe or text resume goes here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit internship modal -->
+  <div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:50;">
+    <div style="background:#0f172a; padding:18px; width:90%; max-width:600px; border-radius:8px; color:#fff;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <strong>Edit Internship</strong>
+        <button id="closeEdit" style="background:#ef4444; color:#fff; border:none; padding:6px 10px; border-radius:6px;">Close</button>
+      </div>
+      <form id="editForm">
+        <input id="editInternId" type="hidden">
+        <label style="display:block; margin-top:8px">Title</label>
+        <input id="editTitle" type="text" required>
+        <label style="display:block; margin-top:8px">Location</label>
+        <input id="editLocation" type="text" required>
+        <label style="display:block; margin-top:8px">Description</label>
+        <textarea id="editDesc" rows="4" required></textarea>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <button id="saveEdit" type="submit">Save changes</button>
+          <button id="cancelEdit" type="button" style="background:#64748b;">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Handle posting form
+    const postForm = document.getElementById('postForm');
+    const postingList = document.getElementById('postingList');
+    const postMessage = document.getElementById('postMessage');
+
+    postForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = postForm[0].value;
+      const location = postForm[1].value;
+      const li = document.createElement('li');
+      li.textContent = `${title} - ${location}`;
+      postingList.appendChild(li);
+      postMessage.textContent = "✅ Internship Posted Successfully!";
+      postForm.reset();
+    });
+
+
+    function logout(){
+      try{
+        if(window.firebase && firebase.auth){
+          firebase.auth().signOut().catch(()=>{});
+        }
+      }catch(e){ /* ignore */ }
+      localStorage.removeItem('rise_user');
+      window.location.href = "login.html";
+    }
+
+    // Chart.js
+    const ctx = document.getElementById('insightChart');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Web Dev', 'Data Analyst', 'AI/ML', 'Design'],
+        datasets: [{
+          label: 'Applications',
+          data: [12, 19, 7, 5],
+          backgroundColor: ['#38bdf8', '#3b82f6', '#0ea5e9', '#0284c7']
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    }
+    
+
+  );
+
+    // --- Application actions: view resume, edit internship, delete internship ---
+    const applicationTable = document.getElementById('applicationTable');
+    // sample data (will be replaced by Firestore if available)
+    let sampleApplications = [
+      { id: 'app1', applicantName: 'Alice', internshipTitle: 'Web Dev', status: 'Pending', resumeUrl: '', internshipId: 'int1' },
+      { id: 'app2', applicantName: 'Rahul', internshipTitle: 'Data Analyst', status: 'Reviewed', resumeUrl: '', internshipId: 'int2' }
+    ];
+
+    function renderApplications(list){
+      applicationTable.innerHTML = '';
+      for(const a of list){
+        const tr = document.createElement('tr');
+        tr.dataset.appId = a.id;
+        tr.innerHTML = `
+          <td>${escapeHtml(a.applicantName)}</td>
+          <td>${escapeHtml(a.internshipTitle)}</td>
+          <td>${escapeHtml(a.status)}</td>
+          <td>
+            <button class="viewResumeBtn" data-id="${a.id}">View Resume</button>
+            <button class="editInternBtn" data-internid="${a.internshipId}">Edit Internship</button>
+            <button class="deleteInternBtn" data-internid="${a.internshipId}" style="background:#ef4444">Delete Internship</button>
+          </td>
+        `;
+        applicationTable.appendChild(tr);
+      }
+    }
+
+    // initial render using sample data
+    renderApplications(sampleApplications);
+
+    // event delegation for actions
+    applicationTable.addEventListener('click', (e)=>{
+      const v = e.target;
+      if(v.classList.contains('viewResumeBtn')){
+        const id = v.dataset.id;
+        const app = sampleApplications.find(x=>x.id===id);
+        viewResume(app);
+      } else if(v.classList.contains('editInternBtn')){
+        const internId = v.dataset.internid;
+        openEditModal(internId);
+      } else if(v.classList.contains('deleteInternBtn')){
+        const internId = v.dataset.internid;
+        deleteInternship(internId);
+      }
+    });
+
+    // resume modal handlers
+    const resumeModal = document.getElementById('resumeModal');
+    const resumeContent = document.getElementById('resumeContent');
+    document.getElementById('closeResume').addEventListener('click', ()=>{ resumeModal.style.display='none'; resumeContent.innerHTML=''; });
+
+    function viewResume(application){
+      if(!application) return alert('Application not found');
+      resumeContent.innerHTML = '';
+      if(application.resumeUrl){
+        // show PDF or url in iframe
+        const iframe = document.createElement('iframe');
+        iframe.src = application.resumeUrl;
+        iframe.style.width = '100%';
+        iframe.style.height = '600px';
+        resumeContent.appendChild(iframe);
+      } else {
+        resumeContent.innerHTML = '<div style="padding:12px">No resume uploaded for this applicant.</div>';
+      }
+      resumeModal.style.display = 'flex';
+    }
+
+    // edit modal handlers
+    const editModal = document.getElementById('editModal');
+    const closeEdit = document.getElementById('closeEdit');
+    const cancelEdit = document.getElementById('cancelEdit');
+    const editForm = document.getElementById('editForm');
+    closeEdit.addEventListener('click', ()=>{ editModal.style.display='none'; });
+    cancelEdit.addEventListener('click', ()=>{ editModal.style.display='none'; });
+
+    // mock internships store if Firestore not present
+    let localInternships = {
+      'int1': { id:'int1', title:'Web Dev', location:'Remote', description:'Build websites' },
+      'int2': { id:'int2', title:'Data Analyst', location:'NY', description:'Analyze data' }
+    };
+
+    function openEditModal(internId){
+      const intern = (window.db && window.firebase) ? null : localInternships[internId];
+      // if Firestore available, load from there
+      if(window.db){
+        db.collection('internships').doc(internId).get().then(doc=>{
+          const data = doc.exists ? doc.data() : null;
+          fillEditForm(internId, data || localInternships[internId]);
+          editModal.style.display = 'flex';
+        }).catch(()=>{ fillEditForm(internId, localInternships[internId]); editModal.style.display='flex'; });
+      } else {
+        fillEditForm(internId, intern);
+        editModal.style.display = 'flex';
+      }
+    }
+
+    function fillEditForm(internId, data){
+      document.getElementById('editInternId').value = internId || '';
+      document.getElementById('editTitle').value = data?.title || '';
+      document.getElementById('editLocation').value = data?.location || '';
+      document.getElementById('editDesc').value = data?.description || '';
+    }
+
+    editForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const id = document.getElementById('editInternId').value;
+      const title = document.getElementById('editTitle').value.trim();
+      const location = document.getElementById('editLocation').value.trim();
+      const description = document.getElementById('editDesc').value.trim();
+      if(window.db){
+        try{
+          await db.collection('internships').doc(id).update({ title, location, description });
+          alert('Internship updated.');
+        }catch(err){ console.error(err); alert('Failed to update internship in backend.'); }
+      } else {
+        if(localInternships[id]){ localInternships[id].title = title; localInternships[id].location = location; localInternships[id].description = description; }
+        alert('Internship updated locally.');
+      }
+      editModal.style.display = 'none';
+      // reflect change in application table and postings list
+      updateRenderedTitles(id, title);
+    });
+
+    function updateRenderedTitles(internId, newTitle){
+      // update applications rows
+      document.querySelectorAll(`[data-internid=\"${internId}\"]`).forEach(btn=>{
+        const row = btn.closest('tr');
+        if(row){ row.children[1].textContent = newTitle; }
+      });
+      // update postings list if shown
+      const postingList = document.getElementById('postingList');
+      Array.from(postingList.children).forEach(li=>{
+        if(li.querySelector && li.querySelector(`[data-id='${internId}']`)){
+          // if posting li stores id somewhere ignore for now
+        }
+      });
+    }
+
+    async function deleteInternship(internId){
+      if(!confirm('Delete this internship and its applications?')) return;
+      if(window.db){
+        try{
+          await db.collection('internships').doc(internId).delete();
+          // remove applications linked to this internship
+          const appsSnap = await db.collection('applications').where('internshipId','==',internId).get();
+          const batch = db.batch();
+          appsSnap.docs.forEach(d=> batch.delete(d.ref));
+          await batch.commit();
+          alert('Internship and related applications deleted.');
+        }catch(err){ console.error(err); alert('Failed to delete from backend.'); }
+      } else {
+        delete localInternships[internId];
+        // remove sampleApplications entries
+        sampleApplications = sampleApplications.filter(a=>a.internshipId!==internId);
+        renderApplications(sampleApplications);
+        alert('Internship deleted locally.');
+      }
+      // refresh UI
+      renderApplications(sampleApplications);
+    }
+  </script>
+  <script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAx3ZwxTYmtmvxfqtOp_LzKUpCTE9cjJyE",
+    authDomain: "rise-intern-47cd2.firebaseapp.com",
+    projectId: "rise-intern-47cd2",
+    storageBucket: "rise-intern-47cd2.firebasestorage.app",
+    messagingSenderId: "481360220760",
+    appId: "1:481360220760:web:9667c81d95355b3a76b02d"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+  const storage = firebase.storage();
+</script>
+
+</body>
+</html>
